@@ -1,5 +1,7 @@
 # Riddler Bench
 
+<img src="assets/ai-robot-examines-egyptian-scrolls.png" alt="AI Robot Examining Ancient Scrolls" width="400" align="right">
+
 A lightweight evaluation harness for testing LLMs on deliberately oblique, riddle-like information retrieval questions.
 
 ## Quick Start
