@@ -1,0 +1,51 @@
+providers:
+  azure_openai:
+    name: Azure OpenAI
+    base_url_env: AZURE_OPENAI_BASE_URL
+    api_key_env: AZURE_API_KEY_2
+    query_params:
+      api-version_env: AZURE_OPENAI_API_VERSION
+    models:
+      # Replace 'deployment' with your actual Azure deployment names
+      - id: gpt-4o
+        deployment: gpt-4o
+      - id: gpt-5
+        deployment: gpt-5
+      - id: gpt-5-mini
+        deployment: gpt-5-mini
+      - id: gpt-5-nano
+        deployment: gpt-5-nano
+      - id: gpt-5-chat
+        deployment: gpt-5-chat
+      - id: o3-pro
+        deployment: o3-pro
+  openrouter:
+    name: OpenRouter
+    base_url_env: OPENROUTER_BASE_URL
+    api_key_env: OPENROUTER_API_KEY
+    default_headers:
+      # Optional, filled programmatically if omitted
+      HTTP-Referer_env: OPENROUTER_HTTP_REFERER
+      X-Title_env: OPENROUTER_X_TITLE
+    models:
+      # Frontier models (more expensive)
+      - id: openai/gpt-4o-mini
+      - id: meta-llama/llama-3.1-405b-instruct
+      - id: qwen/qwen-2.5-72b-instruct
+      # Cheaper models
+      - id: meta-llama/llama-3.1-8b-instruct
+      - id: qwen/qwen-2.5-7b-instruct
+      - id: mistralai/mistral-7b-instruct
+  groq:
+    name: Groq
+    base_url_env: GROQ_BASE_URL
+    api_key_env: GROQ_API_KEY
+    models:
+      # Selected strong/available Groq models
+      - id: llama-3.3-70b-versatile
+      - id: deepseek-r1-distill-llama-70b
+      - id: qwen/qwen3-32b
+      - id: gemma2-9b-it
+      - id: llama-3.1-8b-instant
+      - id: openai/gpt-oss-120b
+      - id: moonshotai/kimi-k2-instruct 

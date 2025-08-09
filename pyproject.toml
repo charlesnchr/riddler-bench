@@ -1,0 +1,29 @@
+[project]
+name = "convoluted-benchmark"
+version = "0.1.0"
+description = "Convoluted Trivial Pursuit LLM Benchmark"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Convoluted Bench" }]
+dependencies = [
+  "langchain>=0.2.11",
+  "langchain-openai>=0.1.23",
+  "langchain-groq>=0.3.7",
+  "openai>=1.37.0",
+  "typer>=0.12.3",
+  "rich>=13.7.1",
+  "pyyaml>=6.0.2",
+  "pydantic>=2.8.2",
+  "pandas>=2.2.2",
+  "rapidfuzz>=3.9.3",
+  "tqdm>=4.66.4",
+  "streamlit>=1.48.0",
+  "plotly>=6.2.0",
+]
+
+[project.scripts]
+convo-bench = "convoluted_benchmark.cli:app"
+
+[tool.uv]
+package = true
+dev-dependencies = ["pytest>=8.3.1"] 
