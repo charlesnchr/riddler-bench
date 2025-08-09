@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import StatCard from './components/StatCard';
 import ModelTable from './components/ModelTable';
 import QuestionTable from './components/QuestionTable';
 import ResultDetail from './components/ResultDetail';
 import ModelCharts from './components/ModelCharts';
+import Hero from './components/Hero';
+import Quiz from './components/Quiz';
 import { Api } from './api';
+import { displayModelName } from './util';
 
 export default function App() {
   const [runs, setRuns] = useState([]);
@@ -63,6 +67,37 @@ export default function App() {
     setDetailOpen(true);
   }
 
+  function Home() {
+    return (
+      <>
+        <Hero />
+        {loading && <div className="card">Loading…</div>}
+        {error && <div className="card"><span className="badge err">{error}</span></div>}
+        {!loading && !error && (
+          <>
+            <div className="grid stats">
+              <StatCard title="Models tested" value={totals.models} />
+              <StatCard title="Questions (mode)" value={totals.questions} sub={totals.mode} />
+              <StatCard title="Average accuracy" value={`${(totals.avgAccuracy * 100).toFixed(1)}%`} />
+              <StatCard title="Best model" value={totals.bestModel} formatter={(v) => displayModelName(v)} badge={{ label: 'Top', variant: 'ok' }} />
+            </div>
+
+            <div className="section-title">Model performance</div>
+            <div>
+              <ModelCharts models={modelRows} onModelClick={openModelDetail} />
+            </div>
+
+            <div className="section-title">Models</div>
+            <ModelTable rows={modelRows} onSelect={openModelDetail} />
+
+            <div className="section-title">Questions (all included, hardest first)</div>
+            <QuestionTable rows={questionRows} onSelect={openQuestionDetail} />
+          </>
+        )}
+      </>
+    );
+  }
+
   return (
     <div className={`app-shell`}>
       <NavBar
@@ -76,29 +111,10 @@ export default function App() {
 
       <div className={`main-wrap${detailOpen ? ' with-detail' : ''}`}>
         <div className={`container`}>
-          {loading && <div className="card">Loading…</div>}
-          {error && <div className="card"><span className="badge err">{error}</span></div>}
-          {!loading && !error && (
-            <>
-              <div className="grid stats">
-                <StatCard title="Models tested" value={totals.models} />
-                <StatCard title="Questions (mode)" value={totals.questions} sub={totals.mode} />
-                <StatCard title="Average accuracy" value={`${(totals.avgAccuracy * 100).toFixed(1)}%`} />
-                <StatCard title="Best model" value={totals.bestModel} badge={{ label: 'Top', variant: 'ok' }} />
-              </div>
-
-              <div className="section-title">Model performance</div>
-              <div>
-                <ModelCharts models={modelRows} />
-              </div>
-
-              <div className="section-title">Models</div>
-              <ModelTable rows={modelRows} onSelect={openModelDetail} />
-
-              <div className="section-title">Questions (all included, hardest first)</div>
-              <QuestionTable rows={questionRows} onSelect={openQuestionDetail} />
-            </>
-          )}
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/examples" element={<Quiz />} />
+          </Routes>
         </div>
         {detailOpen && <div className="right-spacer" aria-hidden="true" />}
       </div>

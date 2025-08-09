@@ -8,6 +8,7 @@
     "server": "node server/index.js",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "build": "react-scripts build",
+    "vercel-build": "react-scripts build",
     "test": "react-scripts test --watchAll=false",
     "eject": "react-scripts eject"
   },

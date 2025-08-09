@@ -4,6 +4,7 @@ Parallel evaluation system for faster benchmark execution.
 
 import asyncio
 import time
+import threading
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -28,7 +29,7 @@ class ParallelEvaluator:
                                  Example: {"azure_openai": 20, "groq": 2, "openrouter": 5}
         """
         self.provider_concurrency = provider_concurrency or {
-            "azure_openai": 20,  # High concurrency for Azure
+            "azure_openai": 8,   # Moderate concurrency to avoid rate limiting
             "groq": 2,           # Conservative for Groq rate limits
             "openrouter": 5,     # Moderate for OpenRouter
         }
@@ -62,16 +63,25 @@ class ParallelEvaluator:
         start_time = time.time()
         rows: List[dict] = []
         
-        # Build model once
-        llm = build_chat_model(model_spec, temperature=temperature)
+        # Thread-local storage for LLM clients to avoid sharing
+        thread_local = threading.local()
+        
+        def get_thread_llm():
+            """Get or create an LLM client for the current thread."""
+            if not hasattr(thread_local, 'llm'):
+                thread_local.llm = build_chat_model(model_spec, temperature=temperature)
+            return thread_local.llm
         
         def process_question(item: QAItem) -> dict:
-            """Process a single question."""
+            """Process a single question with thread-local LLM client."""
             t0 = time.time()
             try:
-                answer = ask_question(llm, item.question)
+                # Get thread-local LLM client (one per thread, reused)
+                llm = get_thread_llm()
+                answer, token_usage = ask_question(llm, item.question)
             except Exception as e:
                 answer = f"<error: {e}>"
+                token_usage = {}
             latency_ms = int((time.time() - t0) * 1000)
             
             g = grade_answer(item, answer, fuzzy_threshold=fuzzy_threshold)
@@ -87,6 +97,7 @@ class ParallelEvaluator:
                 "is_alias": g.is_alias,
                 "fuzzy": g.fuzzy,
                 "is_correct": g.is_correct,
+                **token_usage,  # Add all token usage fields
             }
             
             # Write immediately to file (thread-safe append)

@@ -1,0 +1,223 @@
+// Vercel serverless function wrapper
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+
+// Same logic as server/index.js but adapted for serverless
+const RESULTS_DIR = path.resolve(process.env.RESULTS_DIR || path.join(__dirname, '..', '..', 'results'));
+const DATA_DIR = path.resolve(path.join(__dirname, '..', '..', 'data'));
+
+function findJsonlFiles(dir) {
+  const results = [];
+  function walk(current) {
+    let entries;
+    try { entries = fs.readdirSync(current, { withFileTypes: true }); }
+    catch { return; }
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
+      const rel = path.relative(RESULTS_DIR, full);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+        results.push({ full, rel });
+      }
+    }
+  }
+  walk(dir);
+  return results;
+}
+
+function parseJsonlFile(filePath) {
+  let content = '';
+  try { content = fs.readFileSync(filePath, 'utf8'); } catch { return []; }
+  const lines = content.split(/\r?\n/);
+  const items = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    try {
+      const obj = JSON.parse(line);
+      obj._file = path.relative(RESULTS_DIR, filePath);
+      obj._line = i + 1;
+      items.push(obj);
+    } catch (e) {
+      items.push({ _file: path.relative(RESULTS_DIR, filePath), _line: i + 1, parse_error: String(e), raw: line });
+    }
+  }
+  return items;
+}
+
+function readJsonlData(filePath) {
+  let content = '';
+  try { content = fs.readFileSync(filePath, 'utf8'); } catch { return []; }
+  const lines = content.split(/\r?\n/);
+  const out = [];
+  for (const line of lines) {
+    const s = line.trim();
+    if (!s) continue;
+    try { out.push(JSON.parse(s)); } catch { /* ignore */ }
+  }
+  return out;
+}
+
+function questionKeyOf(item) {
+  if (item == null) return 'unknown';
+  if (item.id != null) return String(item.id);
+  if (typeof item.question === 'string' && item.question.length > 0) return item.question;
+  return 'unknown';
+}
+
+function aggregate(runFilter = null, mode = 'unique') {
+  // Same aggregate function from server/index.js
+  const allFiles = findJsonlFiles(RESULTS_DIR);
+  const files = runFilter
+    ? allFiles.filter(f => f.rel.startsWith(runFilter + path.sep))
+    : allFiles;
+
+  const fileToItems = new Map();
+  for (const f of files) fileToItems.set(f.rel, parseJsonlFile(f.full));
+
+  const items = Array.from(fileToItems.values()).flat();
+
+  const modelsSet = new Set();
+  const modelToAll = new Map();
+  const modelToByQuestion = new Map();
+  const questionToAll = new Map();
+  const questionToByModel = new Map();
+  const modelToRuns = new Map();
+
+  for (const fRel of fileToItems.keys()) {
+    const runName = fRel.split(path.sep)[0] || 'root';
+    const arr = fileToItems.get(fRel);
+    for (const it of arr) {
+      const model = it.model || 'unknown';
+      const qKey = questionKeyOf(it);
+      modelsSet.add(model);
+
+      if (!modelToAll.has(model)) modelToAll.set(model, []);
+      modelToAll.get(model).push(it);
+
+      if (!modelToByQuestion.has(model)) modelToByQuestion.set(model, new Map());
+      if (!modelToByQuestion.get(model).has(qKey)) modelToByQuestion.get(model).set(qKey, []);
+      modelToByQuestion.get(model).get(qKey).push(it);
+
+      if (!questionToAll.has(qKey)) questionToAll.set(qKey, []);
+      questionToAll.get(qKey).push(it);
+
+      if (!questionToByModel.has(qKey)) questionToByModel.set(qKey, new Map());
+      if (!questionToByModel.get(qKey).has(model)) questionToByModel.get(qKey).set(model, []);
+      questionToByModel.get(qKey).get(model).push(it);
+
+      if (!modelToRuns.has(model)) modelToRuns.set(model, new Set());
+      modelToRuns.get(model).add(runName);
+    }
+  }
+
+  // Determine intersection set if requested
+  let intersectionKeys = null;
+  if (mode === 'intersection') {
+    const allKeys = Array.from(questionToByModel.keys());
+    intersectionKeys = allKeys.filter(k => modelToByQuestion.size > 0 && Array.from(modelToByQuestion.keys()).every(m => questionToByModel.get(k)?.has(m)));
+  }
+
+  function pickUnique(records) {
+    return records[records.length - 1];
+  }
+
+  function computeStatsForModel(model) {
+    const byQ = modelToByQuestion.get(model) || new Map();
+    let used = [];
+    if (mode === 'all') {
+      used = modelToAll.get(model) || [];
+    } else if (mode === 'unique') {
+      for (const [qKey, recs] of byQ.entries()) used.push(pickUnique(recs));
+    } else if (mode === 'intersection') {
+      for (const k of intersectionKeys || []) {
+        const recs = byQ.get(k);
+        if (recs && recs.length) used.push(pickUnique(recs));
+      }
+    }
+
+    const count = used.length;
+    const correct = used.filter(x => x.is_correct).length;
+    const accuracy = count ? correct / count : 0;
+    const fuzzyVals = used.map(x => typeof x.fuzzy === 'number' ? x.fuzzy : null).filter(v => v != null);
+    const avgFuzzy = fuzzyVals.length ? fuzzyVals.reduce((a,b) => a+b, 0) / fuzzyVals.length : null;
+    const latVals = used.map(x => typeof x.latency_ms === 'number' ? x.latency_ms : null).filter(v => v != null);
+    const avgLatencyMs = latVals.length ? latVals.reduce((a,b) => a+b, 0) / latVals.length : null;
+    const errorCount = used.filter(x => typeof x.answer === 'string' && x.answer.startsWith('<error:')).length;
+    const errorRate = count ? errorCount / count : 0;
+
+    function avgNum(arr, key) {
+      const vals = arr.map(x => typeof x[key] === 'number' ? x[key] : null).filter(v => v != null);
+      return vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+    }
+    const avgInputTokens = avgNum(used, 'input_tokens');
+    const avgOutputTokens = avgNum(used, 'output_tokens');
+    const avgReasoningTokens = avgNum(used, 'reasoning_tokens');
+
+    const rawCount = (modelToAll.get(model) || []).length;
+    const distinctQuestions = (modelToByQuestion.get(model) || new Map()).size;
+    const duplicationRatio = distinctQuestions ? rawCount / distinctQuestions : 1;
+    const runs = Array.from(modelToRuns.get(model) || []);
+
+    return { model, count, accuracy, avgFuzzy, avgLatencyMs, errorRate, coverage: distinctQuestions, rawCount, duplicationRatio, runsCount: runs.length, runs, avgInputTokens, avgOutputTokens, avgReasoningTokens };
+  }
+
+  const filesByModel = {};
+  for (const f of files) {
+    const fileItems = fileToItems.get(f.rel) || [];
+    const modelsInFile = new Set(fileItems.map(x => x.model || 'unknown'));
+    for (const m of modelsInFile) {
+      if (!filesByModel[m]) filesByModel[m] = [];
+      filesByModel[m].push(f.rel);
+    }
+  }
+
+  const models = Array.from(modelsSet).map(computeStatsForModel);
+
+  const questions = [];
+  const chosenKeys = mode === 'intersection' ? (intersectionKeys || []) : Array.from(questionToAll.keys());
+  for (const k of chosenKeys) {
+    const byModel = questionToByModel.get(k) || new Map();
+    let pool = [];
+    for (const [m, recs] of byModel.entries()) {
+      if (mode === 'all') pool.push(...recs);
+      else pool.push(pickUnique(recs));
+    }
+    const count = pool.length;
+    const correct = pool.filter(x => x.is_correct).length;
+    const accuracy = count ? correct / count : 0;
+    const any = pool[0] || questionToAll.get(k)?.[0] || null;
+    const question = any?.question || '(unknown)';
+    questions.push({ key: k, question, count, accuracy });
+  }
+
+  const runs = Array.from(new Set(files.map(f => f.rel.split(path.sep)[0]).filter(Boolean)));
+
+  return { runs, models, questions, filesByModel, files: files.map(f => f.rel), mode };
+}
+
+// API endpoints
+app.get('/api/runs', (req, res) => {
+  const allFiles = findJsonlFiles(RESULTS_DIR);
+  const runs = Array.from(new Set(allFiles.map(f => f.rel.split(path.sep)[0]).filter(Boolean)));
+  res.json({ runs, base: RESULTS_DIR });
+});
+
+app.get('/api/aggregate', (req, res) => {
+  const run = req.query.run || null;
+  const mode = ['all','unique','intersection'].includes(req.query.mode) ? req.query.mode : 'unique';
+  try {
+    res.json(aggregate(run, mode));
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.get('/api/health', (_req, res) => res.json({ ok: true, env: 'vercel' }));
+
+// Export for Vercel
+module.exports = app;

@@ -1,8 +1,11 @@
 # Riddler Bench
 
-<img src="assets/ai-robot-examines-egyptian-scrolls.png" alt="AI Robot Examining Ancient Scrolls" width="400" align="right">
+A lightweight evaluation harness for testing LLMs on deliberately oblique, riddle-like information retrieval questions. Instead of asking "What movie has hobbits?", we ask "A tale of circular jewelry and walking, where the shortest carry the greatest burden." This tests lateral thinking and the ability to connect abstract clues to concrete knowledge.
 
-A lightweight evaluation harness for testing LLMs on deliberately oblique, riddle-like information retrieval questions.
+<div align="center">
+<img src="assets/ai-robot-examines-egyptian-scrolls.png" alt="AI Robot Examining Ancient Scrolls" width="250">
+</div>
+
 
 ## Quick Start
 
@@ -46,9 +49,9 @@ uv run riddler-bench eval \
 This benchmark tests how well language models can solve riddles that describe real-world entities (movies, people, places, etc.) in deliberately convoluted ways. Instead of direct questions, it uses oblique clues that require lateral thinking.
 
 Example riddle:
-> "A tale of circular jewelry and walking, where the shortest carry the greatest burden"
-> 
-> Answer: *The Lord of the Rings*
+> "Manager who prefers wearable tech for surveillance"
+>
+> Answer: *Sauron*
 
 ## Features
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Api } from '../api';
+import { displayModelName } from '../util';
 
 export default function ResultDetail({ open, onClose, selection }) {
   const [items, setItems] = useState([]);
@@ -46,11 +47,17 @@ export default function ResultDetail({ open, onClose, selection }) {
     return () => { ignore = true; };
   }, [selection]);
 
+  function headerTitle() {
+    if (selection?.type === 'question') return selection?.title || 'Question';
+    if (selection?.model) return displayModelName(selection.model);
+    return selection?.title || 'Details';
+  }
+
   return (
     <div className={`detail-panel ${open ? 'open' : ''}`}>
       <div className="detail-header">
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <strong>{selection?.title || (selection?.type === 'question' ? 'Question' : 'Details')}</strong>
+          <strong>{headerTitle()}</strong>
           {selection?.subtitle && <span className="tag">{selection.subtitle}</span>}
           {selection?.type === 'question' && meta?.accuracy != null && (
             <span className="badge ok">{(meta.accuracy * 100).toFixed(1)}% correct</span>
@@ -80,7 +87,7 @@ export default function ResultDetail({ open, onClose, selection }) {
                 <div className="pm-grid">
                   {meta.perModel.map(m => (
                     <div key={m.model} className="pm-row">
-                      <span className="tag ellipsis" title={m.model}>{m.model}</span>
+                      <span className="tag ellipsis" title={displayModelName(m.model)}>{displayModelName(m.model)}</span>
                       <span className={`badge ${m.is_correct ? 'ok' : 'err'}`}>{m.is_correct ? 'OK' : 'No'}</span>
                     </div>
                   ))}
@@ -102,9 +109,12 @@ export default function ResultDetail({ open, onClose, selection }) {
                     <span className={`badge ${it.is_correct ? 'ok' : it.is_alias ? 'warn' : 'err'}`}>
                       {it.is_correct ? 'Correct' : it.is_alias ? 'Alias match' : 'Incorrect'}
                     </span>
-                    <span className="tag">{it.model}</span>
-                    {it.latency_ms != null && <span className="metric" title="Latency in milliseconds">Latency: {it.latency_ms} ms</span>}
-                    {typeof it.fuzzy === 'number' && <span className="metric" title="Fuzzy score (0-100)">Fuzzy: {it.fuzzy}</span>}
+                    <span className="tag">{displayModelName(it.model)}</span>
+                    {it.latency_ms != null && <span className="metric" title="Latency in seconds">Latency: {(it.latency_ms/1000).toFixed(2)} s</span>}
+                    {typeof it.fuzzy === 'number' && <span className="metric" title="Similarity score (0-100)">Similarity: {it.fuzzy}</span>}
+                    {typeof it.input_tokens === 'number' && <span className="metric" title="Input tokens">In: {it.input_tokens}</span>}
+                    {typeof it.output_tokens === 'number' && <span className="metric" title="Output tokens">Out: {it.output_tokens}</span>}
+                    {typeof it.reasoning_tokens === 'number' && it.reasoning_tokens > 0 && <span className="metric warn" title="Reasoning tokens">Reason: {it.reasoning_tokens}</span>}
                   </div>
                   <span className="small">{it._file}:{it._line}</span>
                 </div>

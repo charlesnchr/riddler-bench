@@ -11,4 +11,5 @@ export const Api = {
   detail: (file) => fetchJSON(`/api/detail?file=${encodeURIComponent(file)}`),
   questions: (run, mode = 'unique') => fetchJSON(run ? `/api/questions?run=${encodeURIComponent(run)}&mode=${mode}` : `/api/questions?mode=${mode}`),
   questionDetail: (key, run, mode = 'unique', qText) => fetchJSON(`/api/question_detail?${key ? `key=${encodeURIComponent(key)}&` : ''}${qText ? `q=${encodeURIComponent(qText)}&` : ''}${run ? `run=${encodeURIComponent(run)}&` : ''}mode=${mode}`),
+  quiz: (limit = 8) => fetchJSON(`/api/quiz?limit=${limit}`),
 }; 

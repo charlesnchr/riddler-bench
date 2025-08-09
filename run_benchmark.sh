@@ -2,19 +2,19 @@
 set -e
 
 # Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-NC='\033[0m' # No Color
+RED=$'\033[0;31m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[1;33m'
+BLUE=$'\033[0;34m'
+PURPLE=$'\033[0;35m'
+NC=$'\033[0m' # No Color
 
 # Default values
 DATASET=""
 RUN_TYPE=""
 OUTPUT_DIR=""
 MODELS=""
-AZURE_WORKERS=20
+AZURE_WORKERS=8
 GROQ_WORKERS=2
 OPENROUTER_WORKERS=5
 CONFIG_FILE="config/models.yaml"
@@ -30,14 +30,14 @@ Usage: $0 [smoke|full] [OPTIONS]
 
 ${YELLOW}Arguments:${NC}
   smoke          Run smoke test (5 questions) for quick validation
-  full           Run full benchmark (45 questions) for comprehensive evaluation
+  full           Run full benchmark (100 questions) for comprehensive evaluation
 
 ${YELLOW}Options:${NC}
   -m, --models MODEL_LIST    Comma-separated list of models (e.g. "azure_openai:gpt-5,azure_openai:gpt-4o")
                             If not specified, runs all configured models
   -o, --output DIR          Output directory (default: results/[timestamp]-[type])
   -c, --config FILE         Config file path (default: config/models.yaml)
-  --azure-workers N         Number of parallel workers for Azure models (default: 20)
+  --azure-workers N         Number of parallel workers for Azure models (default: 8)
   --groq-workers N          Number of parallel workers for Groq models (default: 2)
   --openrouter-workers N    Number of parallel workers for OpenRouter models (default: 5)
   --temperature TEMP        Model temperature (default: 0.0)
@@ -56,9 +56,6 @@ ${YELLOW}Examples:${NC}
 
   # Full benchmark with custom output directory
   $0 full --output results/my-comprehensive-test
-
-${YELLOW}Environment Setup:${NC}
-  Run 'python setup_env.py' first to configure your API keys.
 
 EOF
 }
@@ -131,7 +128,7 @@ if [[ "$RUN_TYPE" == "smoke" ]]; then
     DATASET="data/smoke.jsonl"
     DEFAULT_OUTPUT_PREFIX="smoke"
 else
-    DATASET="data/benchmark.jsonl"
+    DATASET="data/benchmark_oblique_harder.jsonl"
     DEFAULT_OUTPUT_PREFIX="full"
 fi
 
@@ -175,7 +172,7 @@ echo ""
 
 # Ask for confirmation on full runs
 if [[ "$RUN_TYPE" == "full" ]]; then
-    echo -e "${YELLOW}⚠️  Full benchmark will run 45 questions on all models. This may take time and cost money.${NC}"
+    echo -e "${YELLOW}⚠️  Full benchmark will run 100 questions on all models. This may take time and cost money.${NC}"
     read -p "Continue? (y/N): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then

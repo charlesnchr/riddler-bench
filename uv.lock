@@ -235,51 +235,6 @@ wheels = [
 ]
 
 [[package]]
-name = "convoluted-benchmark"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "langchain" },
-    { name = "langchain-groq" },
-    { name = "langchain-openai" },
-    { name = "openai" },
-    { name = "pandas" },
-    { name = "plotly" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "rapidfuzz" },
-    { name = "rich" },
-    { name = "streamlit" },
-    { name = "tqdm" },
-    { name = "typer" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "langchain", specifier = ">=0.2.11" },
-    { name = "langchain-groq", specifier = ">=0.3.7" },
-    { name = "langchain-openai", specifier = ">=0.1.23" },
-    { name = "openai", specifier = ">=1.37.0" },
-    { name = "pandas", specifier = ">=2.2.2" },
-    { name = "plotly", specifier = ">=6.2.0" },
-    { name = "pydantic", specifier = ">=2.8.2" },
-    { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "rapidfuzz", specifier = ">=3.9.3" },
-    { name = "rich", specifier = ">=13.7.1" },
-    { name = "streamlit", specifier = ">=1.48.0" },
-    { name = "tqdm", specifier = ">=4.66.4" },
-    { name = "typer", specifier = ">=0.12.3" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8.3.1" }]
-
-[[package]]
 name = "distro"
 version = "1.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -373,23 +328,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/92/2e/ea25914b1ebfde93b6fc4ff46d6864564fba59024e928bdc7de475affc25/greenlet-3.2.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:061dc4cf2c34852b052a8620d40f36324554bc192be474b9e9770e8c042fd735", size = 695355, upload-time = "2025-08-07T13:18:34.517Z" },
     { url = "https://files.pythonhosted.org/packages/72/60/fc56c62046ec17f6b0d3060564562c64c862948c9d4bc8aa807cf5bd74f4/greenlet-3.2.4-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:44358b9bf66c8576a9f57a590d5f5d6e72fa4228b763d0e43fee6d3b06d3a337", size = 657512, upload-time = "2025-08-07T13:18:33.969Z" },
     { url = "https://files.pythonhosted.org/packages/e3/a5/6ddab2b4c112be95601c13428db1d8b6608a8b6039816f2ba09c346c08fc/greenlet-3.2.4-cp314-cp314-win_amd64.whl", hash = "sha256:e37ab26028f12dbb0ff65f29a8d3d44a765c61e729647bf2ddfbbed621726f01", size = 303425, upload-time = "2025-08-07T13:32:27.59Z" },
-]
-
-[[package]]
-name = "groq"
-version = "0.31.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "distro" },
-    { name = "httpx" },
-    { name = "pydantic" },
-    { name = "sniffio" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/66/a2/77fd1460e7d55859219223719aa44ae8902a3a1ad333cd5faf330eb0b894/groq-0.31.0.tar.gz", hash = "sha256:182252e9bf0d696df607c137cbafa851d2c84aaf94bcfe9165c0bc231043490c", size = 136237, upload-time = "2025-08-05T23:14:01.183Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/f8/14672d69a91495f43462c5490067eeafc30346e81bda1a62848e897f9bc3/groq-0.31.0-py3-none-any.whl", hash = "sha256:5e3c7ec9728b7cccf913da982a9b5ebb46dc18a070b35e12a3d6a1e12d6b0f7f", size = 131365, upload-time = "2025-08-05T23:13:59.768Z" },
 ]
 
 [[package]]
@@ -614,19 +552,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f1/c6/5d755a0f1f4857abbe5ea6f5907ed0e2b5df52bf4dde0a0fd768290e3084/langchain_core-0.3.74.tar.gz", hash = "sha256:ff604441aeade942fbcc0a3860a592daba7671345230c2078ba2eb5f82b6ba76", size = 569553, upload-time = "2025-08-07T20:47:05.094Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4d/26/545283681ac0379d31c7ad0bac5f195e1982092d76c65ca048db9e3cec0e/langchain_core-0.3.74-py3-none-any.whl", hash = "sha256:088338b5bc2f6a66892f9afc777992c24ee3188f41cbc603d09181e34a228ce7", size = 443453, upload-time = "2025-08-07T20:47:03.853Z" },
-]
-
-[[package]]
-name = "langchain-groq"
-version = "0.3.7"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "groq" },
-    { name = "langchain-core" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/54/9d/1bbe0b8d8368ac1df2eabd14be93e052cddac969573b910db4457237bce2/langchain_groq-0.3.7.tar.gz", hash = "sha256:4d799aa565f31e51c632f0f20c588f21c5a0e6c6dd2303efaef43351f9b41bd4", size = 25004, upload-time = "2025-08-05T19:20:45.436Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9d/31/5f32d15105d0160c3753113d5cca5787236c6d2717d25126597d8adc39dd/langchain_groq-0.3.7-py3-none-any.whl", hash = "sha256:2e13870534c032fe1facde3a6ab1fb59af6f1e7a2763125ad549d8e403fc9d00", size = 16418, upload-time = "2025-08-05T19:20:44.4Z" },
 ]
 
 [[package]]
@@ -1675,6 +1600,49 @@ sdist = { url = "https://files.pythonhosted.org/packages/fe/75/af448d8e52bf1d8fa
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e3/30/3c4d035596d3cf444529e0b2953ad0466f6049528a879d27534700580395/rich-14.1.0-py3-none-any.whl", hash = "sha256:536f5f1785986d6dbdea3c75205c473f970777b4a0d6c6dd1b696aa05a3fa04f", size = 243368, upload-time = "2025-07-25T07:32:56.73Z" },
 ]
+
+[[package]]
+name = "riddler-bench"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "langchain" },
+    { name = "langchain-openai" },
+    { name = "openai" },
+    { name = "pandas" },
+    { name = "plotly" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "rapidfuzz" },
+    { name = "rich" },
+    { name = "streamlit" },
+    { name = "tqdm" },
+    { name = "typer" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "langchain", specifier = ">=0.2.11" },
+    { name = "langchain-openai", specifier = ">=0.1.23" },
+    { name = "openai", specifier = ">=1.37.0" },
+    { name = "pandas", specifier = ">=2.2.2" },
+    { name = "plotly", specifier = ">=6.2.0" },
+    { name = "pydantic", specifier = ">=2.8.2" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "rapidfuzz", specifier = ">=3.9.3" },
+    { name = "rich", specifier = ">=13.7.1" },
+    { name = "streamlit", specifier = ">=1.48.0" },
+    { name = "tqdm", specifier = ">=4.66.4" },
+    { name = "typer", specifier = ">=0.12.3" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.3.1" }]
 
 [[package]]
 name = "rpds-py"

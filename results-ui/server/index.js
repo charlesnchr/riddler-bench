@@ -5,6 +5,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 4000;
 const RESULTS_DIR = path.resolve(process.env.RESULTS_DIR || path.join(__dirname, '..', '..', 'results'));
+const DATA_DIR = path.resolve(path.join(__dirname, '..', '..', 'data'));
 
 function findJsonlFiles(dir) {
   const results = [];
@@ -44,6 +45,19 @@ function parseJsonlFile(filePath) {
     }
   }
   return items;
+}
+
+function readJsonlData(filePath) {
+  let content = '';
+  try { content = fs.readFileSync(filePath, 'utf8'); } catch { return []; }
+  const lines = content.split(/\r?\n/);
+  const out = [];
+  for (const line of lines) {
+    const s = line.trim();
+    if (!s) continue;
+    try { out.push(JSON.parse(s)); } catch { /* ignore */ }
+  }
+  return out;
 }
 
 function questionKeyOf(item) {
@@ -134,12 +148,38 @@ function aggregate(runFilter = null, mode = 'unique') {
     const errorCount = used.filter(x => typeof x.answer === 'string' && x.answer.startsWith('<error:')).length;
     const errorRate = count ? errorCount / count : 0;
 
+    // token usage averages if present (support multiple possible shapes)
+    function getToken(it, kind) {
+      const u = it.usage || it.token_usage || it.tokens || {};
+      if (kind === 'in') {
+        return coalesceNumber(it.input_tokens, it.input, u.input_tokens, u.input, it.prompt_tokens);
+      }
+      if (kind === 'out') {
+        return coalesceNumber(it.output_tokens, it.output, u.output_tokens, u.output, it.completion_tokens);
+      }
+      if (kind === 'reason') {
+        return coalesceNumber(it.reasoning_tokens, u.reasoning_tokens, it.reason_tokens, u.reason_tokens);
+      }
+      return null;
+    }
+    function coalesceNumber(...vals) {
+      for (const v of vals) { if (typeof v === 'number' && !Number.isNaN(v)) return v; }
+      return null;
+    }
+    function avgToken(kind) {
+      const arr = used.map(it => getToken(it, kind)).filter(v => v != null);
+      return arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : null;
+    }
+    const avgInputTokens = avgToken('in');
+    const avgOutputTokens = avgToken('out');
+    const avgReasoningTokens = avgToken('reason');
+
     const rawCount = (modelToAll.get(model) || []).length;
     const distinctQuestions = (modelToByQuestion.get(model) || new Map()).size;
     const duplicationRatio = distinctQuestions ? rawCount / distinctQuestions : 1;
     const runs = Array.from(modelToRuns.get(model) || []);
 
-    return { model, count, accuracy, avgFuzzy, avgLatencyMs, errorRate, coverage: distinctQuestions, rawCount, duplicationRatio, runsCount: runs.length, runs };
+    return { model, count, accuracy, avgFuzzy, avgLatencyMs, errorRate, coverage: distinctQuestions, rawCount, duplicationRatio, runsCount: runs.length, runs, avgInputTokens, avgOutputTokens, avgReasoningTokens };
   }
 
   // Files per model
@@ -298,6 +338,50 @@ app.get('/api/question_detail', (req, res) => {
     }
 
     res.json({ key: keyParam || null, q: qTextParam || null, run: run || null, mode, question, answer_ref, aliases, count, correct, accuracy, items, perModel });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.get('/api/quiz', (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(20, parseInt(req.query.limit || '8', 10)));
+    const primary = path.join(DATA_DIR, 'benchmark_oblique_harder.jsonl');
+    const fallback = path.join(DATA_DIR, 'benchmark.jsonl');
+    const existsPrimary = fs.existsSync(primary);
+    const dataset = readJsonlData(existsPrimary ? primary : fallback);
+    const byAnswer = new Map();
+    const items = [];
+    for (const it of dataset) {
+      if (!it || !it.question || !it.answer_ref) continue;
+      items.push({ question: it.question, answer_ref: it.answer_ref, aliases: Array.isArray(it.aliases) ? it.aliases : [] });
+      if (!byAnswer.has(it.answer_ref)) byAnswer.set(it.answer_ref, true);
+    }
+    // pool of unique answers for distractors
+    const allAnswers = Array.from(byAnswer.keys());
+    function sample(array, k, excludeSet) {
+      const out = [];
+      const seen = new Set();
+      while (out.length < k && seen.size < array.length) {
+        const idx = Math.floor(Math.random() * array.length);
+        const val = array[idx];
+        if (excludeSet.has(val) || seen.has(val)) continue;
+        seen.add(val); out.push(val);
+      }
+      return out;
+    }
+    // shuffle helper
+    function shuffle(arr) { for (let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+
+    const selected = shuffle(items.slice()).slice(0, Math.min(limit, items.length));
+    const quiz = selected.map((q, idx) => {
+      const exclude = new Set([q.answer_ref]);
+      const distractors = sample(allAnswers, 3, exclude);
+      const opts = shuffle([q.answer_ref, ...distractors]);
+      const correctIndex = opts.indexOf(q.answer_ref);
+      return { id: idx + 1, question: q.question, options: opts, correctIndex };
+    });
+    res.json({ items: quiz, source: existsPrimary ? 'benchmark_oblique_harder.jsonl' : 'benchmark.jsonl' });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }

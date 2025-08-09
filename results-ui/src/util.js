@@ -1,5 +1,8 @@
 export function displayModelName(modelId) {
   if (!modelId || typeof modelId !== 'string') return modelId;
-  const parts = modelId.split(':');
-  return parts[parts.length - 1];
+  // Remove provider prefix before ':'
+  const afterColon = modelId.includes(':') ? modelId.split(':').pop() : modelId;
+  // Remove company/family qualifier before '/'
+  const afterSlash = afterColon.includes('/') ? afterColon.split('/').pop() : afterColon;
+  return afterSlash;
 } 

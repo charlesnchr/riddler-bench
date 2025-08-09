@@ -60,9 +60,10 @@ def eval(
         for item in items:
             t0 = time.time()
             try:
-                answer = ask_question(llm, item.question)
+                answer, token_usage = ask_question(llm, item.question)
             except Exception as e:
                 answer = f"<error: {e}>"
+                token_usage = {}
             latency_ms = int((time.time() - t0) * 1000)
 
             g = grade_answer(item, answer, fuzzy_threshold=fuzzy_threshold)
@@ -78,6 +79,7 @@ def eval(
                 "is_alias": g.is_alias,
                 "fuzzy": g.fuzzy,
                 "is_correct": g.is_correct,
+                **token_usage,  # Add all token usage fields
             }
             rows.append(row)
             append_jsonl(out_path, row)
@@ -162,7 +164,7 @@ def eval_parallel(
     ),
     fuzzy_threshold: int = typer.Option(85, help="Fuzzy match threshold 0-100"),
     temperature: float = typer.Option(0.0, help="Model sampling temperature"),
-    azure_workers: int = typer.Option(20, help="Parallel workers for Azure models"),
+    azure_workers: int = typer.Option(8, help="Parallel workers for Azure models"),
     groq_workers: int = typer.Option(2, help="Parallel workers for Groq models"),
     openrouter_workers: int = typer.Option(5, help="Parallel workers for OpenRouter models"),
 ):

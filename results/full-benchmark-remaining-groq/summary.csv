@@ -1,0 +1,7 @@
+model,total,correct,accuracy,exact,alias,avg_fuzzy,elapsed_s
+groq:deepseek-r1-distill-llama-70b,45,35,0.778,0,0,81.7,301
+groq:qwen/qwen3-32b,45,35,0.778,0,0,82.5,550
+groq:gemma2-9b-it,45,24,0.533,22,6,69.2,43
+groq:llama-3.1-8b-instant,45,21,0.467,20,5,65.0,41
+groq:openai/gpt-oss-120b,45,28,0.622,27,7,74.6,512
+groq:moonshotai/kimi-k2-instruct,45,38,0.844,34,10,88.7,18

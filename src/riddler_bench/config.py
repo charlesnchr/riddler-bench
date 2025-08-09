@@ -59,7 +59,14 @@ class ProviderConfig(BaseModel):
         
         resolved = {}
         for key, value in self.query_params.items():
-            if isinstance(value, str):
+            if isinstance(value, str) and key.endswith('_env'):
+                # Handle direct key_env format
+                param_name = key[:-4]  # Remove '_env' suffix
+                env_value = os.getenv(value)
+                if not env_value:
+                    raise ValueError(f"Environment variable {value} not set")
+                resolved[param_name] = env_value
+            elif isinstance(value, str):
                 resolved[key] = value
             elif isinstance(value, dict) and len(value) == 1:
                 # Handle format like "api-version_env: AZURE_OPENAI_API_VERSION"

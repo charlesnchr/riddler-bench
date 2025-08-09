@@ -2,7 +2,7 @@ providers:
   azure_openai:
     name: Azure OpenAI
     base_url_env: AZURE_OPENAI_BASE_URL
-    api_key_env: AZURE_API_KEY_2
+    api_key_env: AZURE_OPENAI_API_KEY
     query_params:
       api-version_env: AZURE_OPENAI_API_VERSION
     models:

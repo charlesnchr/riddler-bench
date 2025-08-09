@@ -3,7 +3,7 @@ export default function NavBar({ runs, selectedRun, onRunChange, onRefresh, mode
     <div className="topbar">
       <div className="brand">
         <div className="logo" />
-        <div className="title">Convoluted Benchmark – Results Explorer</div>
+        <div className="title">Riddler Bench – Results Explorer</div>
       </div>
       <div className="controls">
         <select className="select" value={mode} onChange={(e) => onModeChange(e.target.value)}>
