@@ -1,0 +1,2 @@
+model,total,correct,accuracy,exact,alias,avg_fuzzy,elapsed_s
+azure_openai:gpt-4o,5,4,0.8,4,1,85.6,2

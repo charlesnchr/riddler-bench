@@ -1,0 +1,2 @@
+model,total,correct,accuracy,exact,alias,avg_fuzzy,elapsed_s
+groq:llama-3.3-70b-versatile,5,0,0.0,0,0,10.4,1

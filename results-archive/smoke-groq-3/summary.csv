@@ -1,0 +1,4 @@
+model,total,correct,accuracy,exact,alias,avg_fuzzy,elapsed_s
+groq:openai/gpt-oss-120b,5,0,0.0,0,0,10.4,1
+groq:moonshotai/kimi-k2-instruct,5,0,0.0,0,0,10.4,1
+groq:qwen/qwen3-32b,5,0,0.0,0,0,10.4,0

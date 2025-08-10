@@ -1,0 +1,16 @@
+model,total,correct,accuracy,exact,alias,avg_fuzzy,elapsed_s
+azure_openai:gpt-4o,5,4,0.8,4,1,85.6,4
+openrouter:openai/gpt-4o-mini,5,4,0.8,4,1,89.4,3
+openrouter:anthropic/claude-3.5-sonnet,5,0,0.0,0,0,7.8,4
+openrouter:meta-llama/llama-3.1-405b-instruct,5,3,0.6,3,0,70.8,4
+openrouter:qwen/qwen-2.5-72b-instruct,5,3,0.6,3,1,70.6,7
+openrouter:meta-llama/llama-3.1-8b-instruct,5,3,0.6,3,1,70.4,2
+openrouter:qwen/qwen-2.5-7b-instruct,5,3,0.6,3,1,73.4,5
+openrouter:mistralai/mistral-7b-instruct,5,3,0.6,2,1,72.0,3
+groq:llama-3.3-70b-versatile,5,4,0.8,4,1,85.4,0
+groq:deepseek-r1-distill-llama-70b,5,4,0.8,0,0,81.6,11
+groq:qwen/qwen3-32b,5,4,0.8,0,0,81.6,20
+groq:gemma2-9b-it,5,3,0.6,3,1,70.6,1
+groq:llama-3.1-8b-instant,5,3,0.6,3,1,75.0,0
+groq:openai/gpt-oss-120b,5,4,0.8,4,1,85.6,9
+groq:moonshotai/kimi-k2-instruct,5,4,0.8,4,1,86.0,0

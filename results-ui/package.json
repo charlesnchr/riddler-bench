@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "proxy": "http://localhost:4000",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "client": "react-scripts start",
     "server": "node server/index.js",
