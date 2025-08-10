@@ -149,30 +149,82 @@ function aggregate(runFilter = null, mode = 'unique') {
     const errorRate = count ? errorCount / count : 0;
 
     // token usage averages if present (support multiple possible shapes)
+    function get(obj, pathArr) {
+      try {
+        return pathArr.reduce((acc, k) => (acc && acc[k] !== undefined ? acc[k] : undefined), obj);
+      } catch { return undefined; }
+    }
     function getToken(it, kind) {
       const u = it.usage || it.token_usage || it.tokens || {};
       if (kind === 'in') {
-        return coalesceNumber(it.input_tokens, it.input, u.input_tokens, u.input, it.prompt_tokens);
+        return coalesceNumber(
+          it.input_tokens, it.input,
+          u.input_tokens, u.input,
+          it.prompt_tokens,
+          u.prompt_tokens,
+          get(u, ['prompt', 'tokens'])
+        );
       }
       if (kind === 'out') {
-        return coalesceNumber(it.output_tokens, it.output, u.output_tokens, u.output, it.completion_tokens);
+        return coalesceNumber(
+          it.output_tokens, it.output,
+          u.output_tokens, u.output,
+          it.completion_tokens,
+          u.completion_tokens,
+          get(u, ['completion', 'tokens'])
+        );
       }
       if (kind === 'reason') {
-        return coalesceNumber(it.reasoning_tokens, u.reasoning_tokens, it.reason_tokens, u.reason_tokens);
+        const r1 = coalesceNumber(
+          it.reasoning_tokens,
+          u.reasoning_tokens,
+          it.reason_tokens,
+          u.reason_tokens,
+          get(u, ['prompt_tokens_details', 'reasoning_tokens']),
+          get(u, ['completion_tokens_details', 'reasoning_tokens']),
+          get(u, ['prompt', 'tokens_details', 'reasoning_tokens']),
+          get(u, ['completion', 'tokens_details', 'reasoning_tokens'])
+        );
+        // Some providers split reasoning tokens across prompt/completion; try to sum if both exist
+        const pDetail = coalesceNumber(
+          get(u, ['prompt_tokens_details', 'reasoning_tokens']),
+          get(u, ['prompt', 'tokens_details', 'reasoning_tokens'])
+        ) || 0;
+        const cDetail = coalesceNumber(
+          get(u, ['completion_tokens_details', 'reasoning_tokens']),
+          get(u, ['completion', 'tokens_details', 'reasoning_tokens'])
+        ) || 0;
+        if (pDetail + cDetail > 0) return pDetail + cDetail;
+        return r1;
       }
       return null;
     }
     function coalesceNumber(...vals) {
-      for (const v of vals) { if (typeof v === 'number' && !Number.isNaN(v)) return v; }
+      for (let v of vals) {
+        if (typeof v === 'number' && !Number.isNaN(v)) return v;
+        if (typeof v === 'string') {
+          const n = Number(v);
+          if (!Number.isNaN(n)) return n;
+        }
+      }
       return null;
     }
     function avgToken(kind) {
       const arr = used.map(it => getToken(it, kind)).filter(v => v != null);
       return arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : null;
     }
-    const avgInputTokens = avgToken('in');
-    const avgOutputTokens = avgToken('out');
+    let avgInputTokens = avgToken('in');
+    let avgOutputTokens = avgToken('out');
     const avgReasoningTokens = avgToken('reason');
+    const avgTotalTokens = coalesceNumber(
+      avgToken('total'),
+      // derive from known fields if available
+      (avgInputTokens != null && avgOutputTokens != null) ? (avgInputTokens + avgOutputTokens) : null
+    );
+    // Fallbacks: if no output but total exists, attribute to output
+    if ((avgOutputTokens == null || Number.isNaN(avgOutputTokens)) && avgTotalTokens != null) {
+      avgOutputTokens = (avgInputTokens != null) ? Math.max(0, avgTotalTokens - avgInputTokens) : avgTotalTokens;
+    }
 
     const rawCount = (modelToAll.get(model) || []).length;
     const distinctQuestions = (modelToByQuestion.get(model) || new Map()).size;
