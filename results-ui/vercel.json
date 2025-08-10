@@ -1,0 +1,22 @@
+{
+  "buildCommand": "node scripts/copy-results.js && npm run build",
+  "outputDirectory": "build",
+  "framework": "create-react-app",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 10,
+      "runtime": "nodejs20.x",
+      "includeFiles": "results/**"
+    }
+  }
+}

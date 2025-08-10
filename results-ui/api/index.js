@@ -5,9 +5,17 @@ const path = require('path');
 
 const app = express();
 
-// Same logic as server/index.js but adapted for serverless
-const RESULTS_DIR = path.resolve(process.env.RESULTS_DIR || path.join(__dirname, '..', '..', 'results'));
-const DATA_DIR = path.resolve(path.join(__dirname, '..', '..', 'data'));
+// In Vercel, files are included relative to the function
+// The includeFiles in vercel.json copies results data
+const RESULTS_DIR = path.resolve(process.env.RESULTS_DIR || path.join(__dirname, '..', 'results'));
+const DATA_DIR = path.resolve(path.join(__dirname, '..', 'data'));
+
+// Enable CORS for API routes
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 
 function findJsonlFiles(dir) {
   const results = [];
@@ -150,13 +158,64 @@ function aggregate(runFilter = null, mode = 'unique') {
     const errorCount = used.filter(x => typeof x.answer === 'string' && x.answer.startsWith('<error:')).length;
     const errorRate = count ? errorCount / count : 0;
 
-    function avgNum(arr, key) {
-      const vals = arr.map(x => typeof x[key] === 'number' ? x[key] : null).filter(v => v != null);
-      return vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+    // Enhanced token extraction matching server/index.js logic
+    function getToken(it, kind) {
+      const u = it.usage || it.token_usage || it.tokens || {};
+      if (kind === 'in') {
+        return coalesceNumber(
+          it.input_tokens, it.input,
+          u.input_tokens, u.input,
+          it.prompt_tokens,
+          u.prompt_tokens
+        );
+      }
+      if (kind === 'out') {
+        return coalesceNumber(
+          it.output_tokens, it.output,
+          u.output_tokens, u.output,
+          it.completion_tokens,
+          u.completion_tokens
+        );
+      }
+      if (kind === 'reason') {
+        return coalesceNumber(
+          it.reasoning_tokens,
+          u.reasoning_tokens,
+          it.reason_tokens,
+          u.reason_tokens
+        );
+      }
+      return null;
     }
-    const avgInputTokens = avgNum(used, 'input_tokens');
-    const avgOutputTokens = avgNum(used, 'output_tokens');
-    const avgReasoningTokens = avgNum(used, 'reasoning_tokens');
+    
+    function coalesceNumber(...vals) {
+      for (let v of vals) {
+        if (typeof v === 'number' && !Number.isNaN(v)) return v;
+        if (typeof v === 'string') {
+          const n = Number(v);
+          if (!Number.isNaN(n)) return n;
+        }
+      }
+      return null;
+    }
+    
+    function avgToken(kind) {
+      const arr = used.map(it => getToken(it, kind)).filter(v => v != null);
+      return arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : null;
+    }
+    
+    let avgInputTokens = avgToken('in');
+    let avgOutputTokens = avgToken('out');
+    const avgReasoningTokens = avgToken('reason');
+    const avgTotalTokens = coalesceNumber(
+      avgToken('total'),
+      (avgInputTokens != null && avgOutputTokens != null) ? (avgInputTokens + avgOutputTokens) : null
+    );
+    
+    // Fallback: if no output but total exists, attribute to output
+    if (avgOutputTokens == null && avgTotalTokens != null) {
+      avgOutputTokens = (avgInputTokens != null) ? Math.max(0, avgTotalTokens - avgInputTokens) : avgTotalTokens;
+    }
 
     const rawCount = (modelToAll.get(model) || []).length;
     const distinctQuestions = (modelToByQuestion.get(model) || new Map()).size;
@@ -212,6 +271,157 @@ app.get('/api/aggregate', (req, res) => {
   const mode = ['all','unique','intersection'].includes(req.query.mode) ? req.query.mode : 'unique';
   try {
     res.json(aggregate(run, mode));
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+// Add all the missing endpoints from server/index.js
+app.get('/api/files', (req, res) => {
+  const run = req.query.run || null;
+  const allFiles = findJsonlFiles(RESULTS_DIR).map(f => f.rel);
+  const files = run ? allFiles.filter(rel => rel.startsWith(run + path.sep)) : allFiles;
+  res.json({ files });
+});
+
+app.get('/api/detail', (req, res) => {
+  const rel = req.query.file;
+  if (!rel) return res.status(400).json({ error: 'file is required' });
+  const full = path.join(RESULTS_DIR, rel);
+  if (!full.startsWith(RESULTS_DIR)) return res.status(400).json({ error: 'invalid path' });
+  try {
+    const items = parseJsonlFile(full);
+    res.json({ items });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.get('/api/questions', (req, res) => {
+  const run = req.query.run || null;
+  const mode = ['all','unique','intersection'].includes(req.query.mode) ? req.query.mode : 'unique';
+  try {
+    const agg = aggregate(run, mode);
+    res.json({ mode: agg.mode, questions: agg.questions });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.get('/api/question_detail', (req, res) => {
+  const run = req.query.run || null;
+  const mode = ['all','unique','intersection'].includes(req.query.mode) ? req.query.mode : 'unique';
+  const keyParam = req.query.key;
+  const qTextParam = req.query.q || null;
+  if (!keyParam && !qTextParam) return res.status(400).json({ error: 'key or q is required' });
+
+  try {
+    const allFiles = findJsonlFiles(RESULTS_DIR);
+    const files = run ? allFiles.filter(f => f.rel.startsWith(run + path.sep)) : allFiles;
+    const fileToItems = new Map();
+    for (const f of files) fileToItems.set(f.rel, parseJsonlFile(f.full));
+
+    const modelToByQuestion = new Map();
+    const modelSet = new Set();
+    for (const [, arr] of fileToItems.entries()) {
+      for (const it of arr) {
+        const model = it.model || 'unknown';
+        const qKey = questionKeyOf(it);
+        if (!modelToByQuestion.has(model)) modelToByQuestion.set(model, new Map());
+        if (!modelToByQuestion.get(model).has(qKey)) modelToByQuestion.get(model).set(qKey, []);
+        modelToByQuestion.get(model).get(qKey).push(it);
+        modelSet.add(model);
+      }
+    }
+
+    function pickUnique(records) { return records[records.length - 1]; }
+
+    const items = [];
+    const perModel = [];
+    for (const model of modelSet) {
+      const byQ = modelToByQuestion.get(model) || new Map();
+      let recs = undefined;
+      if (keyParam) recs = byQ.get(keyParam);
+      if ((!recs || recs.length === 0) && qTextParam) {
+        for (const [, rs] of byQ.entries()) {
+          if (rs && rs.length && rs[0]?.question === qTextParam) { recs = rs; break; }
+        }
+      }
+      if ((!recs || recs.length === 0) && keyParam && !qTextParam) {
+        for (const [, rs] of byQ.entries()) {
+          if (rs && rs.length && rs[0]?.question === keyParam) { recs = rs; break; }
+        }
+      }
+      if (!recs || recs.length === 0) continue;
+
+      if (mode === 'all') {
+        items.push(...recs.map(r => ({ ...r })));
+        const last = recs[recs.length - 1];
+        perModel.push({ model, is_correct: !!last.is_correct, latency_ms: last.latency_ms ?? null, fuzzy: last.fuzzy ?? null });
+      } else {
+        const chosen = pickUnique(recs);
+        items.push({ ...chosen });
+        perModel.push({ model, is_correct: !!chosen.is_correct, latency_ms: chosen.latency_ms ?? null, fuzzy: chosen.fuzzy ?? null });
+      }
+    }
+
+    const count = items.length;
+    const correct = items.filter(x => x.is_correct).length;
+    const accuracy = count ? correct / count : 0;
+
+    let question = qTextParam || '(unknown)';
+    let answer_ref = null;
+    let aliases = [];
+    for (const it of items) {
+      if (it.question && question === '(unknown)') question = it.question;
+      if (it.answer_ref && !answer_ref) answer_ref = it.answer_ref;
+      if (Array.isArray(it.aliases) && it.aliases.length && aliases.length === 0) aliases = it.aliases;
+      if (question !== '(unknown)' && answer_ref && aliases.length) break;
+    }
+
+    res.json({ key: keyParam || null, q: qTextParam || null, run: run || null, mode, question, answer_ref, aliases, count, correct, accuracy, items, perModel });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.get('/api/quiz', (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(20, parseInt(req.query.limit || '8', 10)));
+    const primary = path.join(DATA_DIR, 'benchmark_oblique_harder.jsonl');
+    const fallback = path.join(DATA_DIR, 'benchmark.jsonl');
+    const existsPrimary = fs.existsSync(primary);
+    const dataset = readJsonlData(existsPrimary ? primary : fallback);
+    const byAnswer = new Map();
+    const items = [];
+    for (const it of dataset) {
+      if (!it || !it.question || !it.answer_ref) continue;
+      items.push({ question: it.question, answer_ref: it.answer_ref, aliases: Array.isArray(it.aliases) ? it.aliases : [] });
+      if (!byAnswer.has(it.answer_ref)) byAnswer.set(it.answer_ref, true);
+    }
+    const allAnswers = Array.from(byAnswer.keys());
+    function sample(array, k, excludeSet) {
+      const out = [];
+      const seen = new Set();
+      while (out.length < k && seen.size < array.length) {
+        const idx = Math.floor(Math.random() * array.length);
+        const val = array[idx];
+        if (excludeSet.has(val) || seen.has(val)) continue;
+        seen.add(val); out.push(val);
+      }
+      return out;
+    }
+    function shuffle(arr) { for (let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+
+    const selected = shuffle(items.slice()).slice(0, Math.min(limit, items.length));
+    const quiz = selected.map((q, idx) => {
+      const exclude = new Set([q.answer_ref]);
+      const distractors = sample(allAnswers, 3, exclude);
+      const opts = shuffle([q.answer_ref, ...distractors]);
+      const correctIndex = opts.indexOf(q.answer_ref);
+      return { id: idx + 1, question: q.question, options: opts, correctIndex };
+    });
+    res.json({ items: quiz, source: existsPrimary ? 'benchmark_oblique_harder.jsonl' : 'benchmark.jsonl' });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }

@@ -9,9 +9,9 @@ export default function ModelCharts({ models, onModelClick }) {
     latency: m.avgLatencyMs != null ? Math.round(m.avgLatencyMs) : null,
     coverage: m.coverage || 0,
     errorsPct: Number((m.errorRate * 100).toFixed(1)),
-    inputTokens: Number(m.avgInputTokens ?? 0),
-    outputTokens: Number(m.avgOutputTokens ?? 0),
-    reasoningTokens: Number(m.avgReasoningTokens ?? 0),
+    inputTokens: m.avgInputTokens != null ? Math.round(m.avgInputTokens) : 0,
+    outputTokens: m.avgOutputTokens != null ? Math.round(m.avgOutputTokens) : 0,
+    reasoningTokens: m.avgReasoningTokens != null ? Math.round(m.avgReasoningTokens) : 0,
   }));
 
   return (
@@ -49,18 +49,31 @@ export default function ModelCharts({ models, onModelClick }) {
       <div className="card">
         <h3>Token usage (avg per request)</h3>
         <div style={{ width: '100%', height: 320 }}>
-          <ResponsiveContainer>
-            <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 30 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-              <XAxis dataKey="label" angle={-20} textAnchor="end" height={60} tick={{ fill: '#8c90b3', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#8c90b3' }} />
-              <Tooltip contentStyle={{ background: '#171a36', border: '1px solid rgba(255,255,255,0.08)', color: '#e7e9ff' }} formatter={(v, n, p) => [v, `${n} · ${displayModelName(p.payload.model)}`]} />
-              <Legend wrapperStyle={{ color: '#8c90b3' }} />
-              <Bar dataKey="inputTokens" name="Input" stackId="tokens" fill="#58c7a8" radius={[0,0,0,0]} />
-              <Bar dataKey="outputTokens" name="Output" stackId="tokens" fill="#3ca4b8" radius={[0,0,0,0]} />
-              <Bar dataKey="reasoningTokens" name="Reasoning" stackId="tokens" fill="#7dd3fc" radius={[6,6,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {(() => {
+            // Filter to only models with token data
+            const tokenData = data.filter(d => d.inputTokens > 0 || d.outputTokens > 0 || d.reasoningTokens > 0);
+            if (tokenData.length === 0) {
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#8c90b3' }}>
+                  No token usage data available
+                </div>
+              );
+            }
+            return (
+              <ResponsiveContainer>
+                <BarChart data={tokenData} margin={{ top: 10, right: 10, left: 0, bottom: 30 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="label" angle={-20} textAnchor="end" height={60} tick={{ fill: '#8c90b3', fontSize: 12 }} />
+                  <YAxis tick={{ fill: '#8c90b3' }} />
+                  <Tooltip contentStyle={{ background: '#171a36', border: '1px solid rgba(255,255,255,0.08)', color: '#e7e9ff' }} formatter={(v, n, p) => [v, `${n} · ${displayModelName(p.payload.model)}`]} />
+                  <Legend wrapperStyle={{ color: '#8c90b3' }} />
+                  <Bar dataKey="inputTokens" name="Input" stackId="tokens" fill="#58c7a8" radius={[0,0,0,0]} />
+                  <Bar dataKey="outputTokens" name="Output" stackId="tokens" fill="#3ca4b8" radius={[0,0,0,0]} />
+                  <Bar dataKey="reasoningTokens" name="Reasoning" stackId="tokens" fill="#7dd3fc" radius={[6,6,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            );
+          })()}
         </div>
       </div>
 

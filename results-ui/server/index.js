@@ -7,6 +7,13 @@ const PORT = process.env.PORT || 4000;
 const RESULTS_DIR = path.resolve(process.env.RESULTS_DIR || path.join(__dirname, '..', '..', 'results'));
 const DATA_DIR = path.resolve(path.join(__dirname, '..', '..', 'data'));
 
+// Serve static files from React build in production
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction) {
+  const buildPath = path.join(__dirname, '..', 'build');
+  app.use(express.static(buildPath));
+}
+
 function findJsonlFiles(dir) {
   const results = [];
   function walk(current) {
@@ -222,7 +229,7 @@ function aggregate(runFilter = null, mode = 'unique') {
       (avgInputTokens != null && avgOutputTokens != null) ? (avgInputTokens + avgOutputTokens) : null
     );
     // Fallbacks: if no output but total exists, attribute to output
-    if ((avgOutputTokens == null || Number.isNaN(avgOutputTokens)) && avgTotalTokens != null) {
+    if (avgOutputTokens == null && avgTotalTokens != null) {
       avgOutputTokens = (avgInputTokens != null) ? Math.max(0, avgTotalTokens - avgInputTokens) : avgTotalTokens;
     }
 
@@ -441,7 +448,16 @@ app.get('/api/quiz', (req, res) => {
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
+// Catch-all route - must be after all API routes
+// This serves the React app for any route that doesn't match an API endpoint
+if (isProduction) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'build', 'index.html'));
+  });
+}
+
 app.listen(PORT, () => {
-  console.log(`[results-ui] API listening on http://localhost:${PORT}`);
+  console.log(`[results-ui] Server listening on http://localhost:${PORT}`);
+  console.log('Environment:', isProduction ? 'production' : 'development');
   console.log('Results dir:', RESULTS_DIR);
 }); 
