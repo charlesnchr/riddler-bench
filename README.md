@@ -73,6 +73,8 @@ npm run dev
 ## TODO
 
 - [ ] Add Google Gemini models to the test suite
+- [ ] **Fix question detail mismatch bug**: Questions in the hardest question table sometimes display incorrect model responses when clicked. The overview shows which models were correct, but scrolling down reveals responses that don't match the original question. This appears to be a data registration issue when multiple datasets are loaded simultaneously.
+- [ ] **Clean reasoning traces before correctness evaluation**: Models that output reasoning in `<think></think>` tags can get incorrectly marked as correct when the reasoning trace happens to contain the answer. The correctness checker should strip reasoning traces first, similar to how we separate reasoning/output tokens for DeepSeek and Qwen models.
 
 ## License
 

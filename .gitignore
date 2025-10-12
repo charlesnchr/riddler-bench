@@ -168,3 +168,5 @@ Thumbs.db
 # Local development files
 *.local
 .claude/
+/data/
+/results/

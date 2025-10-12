@@ -404,7 +404,25 @@ app.get('/api/question_detail', (req, res) => {
 
 app.get('/api/quiz', (req, res) => {
   try {
+    const mode = req.query.mode || 'random';
     const limit = Math.max(1, Math.min(20, parseInt(req.query.limit || '8', 10)));
+
+    // Check for curated quiz mode
+    const curatedFile = path.join(DATA_DIR, 'quiz_try_yourself.jsonl');
+    const hasCurated = fs.existsSync(curatedFile);
+
+    if (mode === 'curated' && hasCurated) {
+      // Use pre-designed curated questions with fixed options
+      const dataset = readJsonlData(curatedFile);
+      const quiz = dataset.map((q, idx) => {
+        if (!q.question || !q.answer || !Array.isArray(q.options)) return null;
+        const correctIndex = q.options.indexOf(q.answer);
+        return { id: idx + 1, question: q.question, options: q.options, correctIndex };
+      }).filter(q => q !== null);
+      return res.json({ items: quiz, source: 'quiz_try_yourself.jsonl', mode: 'curated' });
+    }
+
+    // Random mode: generate random quiz from benchmark data
     const primary = path.join(DATA_DIR, 'benchmark_oblique_harder.jsonl');
     const fallback = path.join(DATA_DIR, 'benchmark.jsonl');
     const existsPrimary = fs.existsSync(primary);
@@ -440,7 +458,7 @@ app.get('/api/quiz', (req, res) => {
       const correctIndex = opts.indexOf(q.answer_ref);
       return { id: idx + 1, question: q.question, options: opts, correctIndex };
     });
-    res.json({ items: quiz, source: existsPrimary ? 'benchmark_oblique_harder.jsonl' : 'benchmark.jsonl' });
+    res.json({ items: quiz, source: existsPrimary ? 'benchmark_oblique_harder.jsonl' : 'benchmark.jsonl', mode: 'random' });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }
