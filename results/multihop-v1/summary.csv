@@ -1,0 +1,5 @@
+model,total,correct,accuracy,exact,alias,avg_fuzzy,elapsed_s
+azure_openai:gpt-4o,20,19,0.95,19,0,97.0,16
+openrouter:openai/gpt-4o-mini,20,15,0.75,15,0,84.5,10
+groq:llama-3.3-70b-versatile,20,18,0.9,16,0,92.4,2
+openrouter:qwen/qwen-2.5-7b-instruct,20,10,0.5,7,0,67.1,46
