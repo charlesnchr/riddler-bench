@@ -69,8 +69,8 @@ function readJsonlData(filePath) {
 
 function questionKeyOf(item) {
   if (item == null) return 'unknown';
-  if (item.id != null) return String(item.id);
   if (typeof item.question === 'string' && item.question.length > 0) return item.question;
+  if (item.id != null) return String(item.id);
   return 'unknown';
 }
 

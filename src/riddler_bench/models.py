@@ -44,15 +44,15 @@ def _parse_deepseek_reasoning_content(response_text: str) -> tuple[str, dict]:
     Reasoning tokens should be a subset of output tokens, not additional.
     """
     # Parse <think>...</think> tags (DeepSeek format)
-    think_pattern = r'<think>(.*?)</think>'
-    think_matches = re.findall(think_pattern, response_text, re.DOTALL)
+    think_matches = re.findall(r'<think>([\s\S]*?)</think>', response_text, re.IGNORECASE)
     
     if think_matches:
         # Extract reasoning content
         reasoning_text = '\n'.join(think_matches)
         
         # Remove think tags to get clean response
-        clean_response = re.sub(think_pattern, '', response_text, flags=re.DOTALL).strip()
+        clean_response = re.sub(r'<think>[\s\S]*?</think>', '', response_text, flags=re.IGNORECASE).strip()
+        clean_response = re.sub(r'```(?:\w+\n)?', '', clean_response).strip()
         
         # Estimate reasoning tokens and final answer tokens
         reasoning_tokens = _estimate_tokens(reasoning_text)
